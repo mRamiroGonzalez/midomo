@@ -1,0 +1,45 @@
+version: '2.0'
+
+services:
+  elasticsearch-642:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.1
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.4.2
+    depends_on:
+      - elasticsearch-642
+    external_links:
+      - elasticsearch-642:elasticsearch
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.2
+
+  percona:
+    image: percona
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=my_database
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.3
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_HOSTS=percona
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.4
+
+networks:
+  midomo:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.10.0.0/24
+          gateway: 10.10.0.254
