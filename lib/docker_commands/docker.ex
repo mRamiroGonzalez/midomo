@@ -1,5 +1,4 @@
 defmodule Midomo.Docker do
-  @moduledoc false
 
   def up(path \\ "docker/docker-compose.yml") do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build"])
@@ -44,5 +43,4 @@ defmodule Midomo.Docker do
       end)
     end
   end
-
 end

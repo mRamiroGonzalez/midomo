@@ -15,6 +15,5 @@ defmodule Midomo do
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
-    #Midomo.Docker.prepare_list_data()
   end
 end
