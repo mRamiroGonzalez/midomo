@@ -127,6 +127,7 @@ defmodule Midomo.Scene.Home do
     |> construct_container_list(remaining_items, dimensions, counter + 1)
   end
 
+    # CLEAR
   defp clear_screen(graph) do
     graph |> rect({1280, 720}, fill: :black)
   end
