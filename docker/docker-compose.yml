@@ -1,21 +1,12 @@
 version: '2.0'
 
 services:
-  elasticsearch-642:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+
+  elasticsearch-235:
+    image: elasticsearch:2.3.5
     networks:
       midomo:
         ipv4_address: 10.10.0.1
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:6.4.2
-    depends_on:
-      - elasticsearch-642
-    external_links:
-      - elasticsearch-642:elasticsearch
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.2
 
   percona:
     image: percona
@@ -23,6 +14,12 @@ services:
       - MYSQL_USER=root
       - MYSQL_ROOT_PASSWORD=password
       - MYSQL_DATABASE=my_database
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.2
+
+  nginx:
+    image: nginx
     networks:
       midomo:
         ipv4_address: 10.10.0.3
