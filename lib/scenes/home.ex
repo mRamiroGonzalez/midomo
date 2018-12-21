@@ -8,6 +8,7 @@ defmodule Midomo.Scene.Home do
 
   alias Midomo.Docker
 
+  @services_per_group 5
   @refresh_ms 2000
   @get_docker_info_timeout 5000
   @base_graph Graph.build(font: :roboto, font_size: 18, theme: :dark)
@@ -123,6 +124,8 @@ defmodule Midomo.Scene.Home do
   defp construct_container_list(graph, %{}, _, _), do: clear_list(graph)
   defp construct_container_list(graph, [], _, _), do: graph
   defp construct_container_list(graph, [item | remaining_items], {width, _height} = dimensions, counter) do
+
+    counter = if (rem(counter, @services_per_group + 1) == 0), do: counter + 1, else: counter
     container_id = item[:id]
     name = item[:name]
     status = item[:status]
