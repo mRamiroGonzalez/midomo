@@ -71,12 +71,6 @@ defmodule Midomo.Scene.Home do
       "restart" ->
         IO.puts "restarting " <> container_id
         Docker.restart(monitor_pid, container_id)
-      "stop" ->
-        IO.puts "stopping " <> container_id
-        Docker.stop(monitor_pid, container_id)
-      "start" ->
-        IO.puts "starting " <> container_id
-        Docker.start(monitor_pid, container_id)
     end
 
     {:continue, event, state}
