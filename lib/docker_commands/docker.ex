@@ -1,26 +1,83 @@
 defmodule Midomo.Docker do
+  use GenServer
 
-  def up(path \\ "docker/docker-compose.yml") do
+  @refresh_ms 1000
+
+
+  ## CLIENT API
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, :ok, opts)
+  end
+
+  def up(pid, path \\ "docker/docker-compose.yml") do
+    GenServer.cast(pid, {:up, path})
+  end
+
+  def down(pid, path \\ "docker/docker-compose.yml") do
+    GenServer.cast(pid, {:down, path})
+  end
+
+  def restart(pid, id) do
+    GenServer.cast(pid, {:restart, id})
+  end
+
+  def start(pid, id) do
+    GenServer.cast(pid, {:start, id})
+  end
+
+  def stop(pid, id) do
+    GenServer.cast(pid, {:stop, id})
+  end
+
+  def get_state(pid) do
+    IO.puts("Get state #{DateTime.utc_now()}")
+    GenServer.call(pid, :get_state)
+  end
+
+
+  ## SERVER CALLBACKS
+  def init(:ok) do
+    {:ok, _timer} = :timer.send_interval(@refresh_ms, :refresh)
+    {:ok, %{}}
+  end
+
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
+  end
+
+  def handle_info(:refresh, state) do
+    #IO.puts("Refresh data #{DateTime.utc_now()}")
+    {:noreply, prepare_list_data()}
+  end
+
+  def handle_cast({:up, path}, state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build"])
+    {:noreply, state}
   end
 
-  def down(path \\ "docker/docker-compose.yml") do
+  def handle_cast({:down, path}, state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "down"])
+    {:noreply, state}
   end
 
-  def restart(id) do
+  def handle_cast({:restart, id}, state) do
     {_result, _status} = System.cmd("docker", ["restart", id])
+    {:noreply, state}
   end
 
-  def stop(id) do
+  def handle_cast({:stop, id}, state) do
     {_result, _status} = System.cmd("docker", ["stop", id])
+    {:noreply, state}
   end
 
-  def start(id) do
+  def handle_cast({:start, id}, state) do
     {_result, _status} = System.cmd("docker", ["start", id])
+    {:noreply, state}
   end
 
-  def prepare_list_data(path \\ "docker/docker-compose.yml") do
+
+  ## PRIVATE
+  defp prepare_list_data(path \\ "docker/docker-compose.yml") do
     {result, _status} = System.cmd("docker-compose", ["-f", path, "ps", "-q"])
 
     if(result != "") do
@@ -34,13 +91,15 @@ defmodule Midomo.Docker do
         docker_inspect_map = Enum.at(docker_inspect_array, 0)
 
         item = %{}
-               |> put_in([:id],      get_in(docker_inspect_map, ["Config", "Hostname"]))
-               |> put_in([:image],   get_in(docker_inspect_map, ["Config", "Image"]))
-               |> put_in([:status],  get_in(docker_inspect_map, ["State", "Status"]))
-               |> put_in([:name],    get_in(docker_inspect_map, ["Name"]) |> String.trim("/"))
+        |> put_in([:id],      get_in(docker_inspect_map, ["Config", "Hostname"]))
+        |> put_in([:image],   get_in(docker_inspect_map, ["Config", "Image"]))
+        |> put_in([:status],  get_in(docker_inspect_map, ["State", "Status"]))
+        |> put_in([:name],    get_in(docker_inspect_map, ["Name"]) |> String.trim("/"))
 
         [item | acc]
       end)
+    else
+      %{}
     end
   end
 end
