@@ -9,6 +9,7 @@ defmodule Midomo.Scene.Home do
   alias Midomo.Docker
 
   @refresh_ms 1000
+  @get_docker_info_timeout 5000
   @base_graph Graph.build(font: :roboto, font_size: 18)
 
 
@@ -18,7 +19,8 @@ defmodule Midomo.Scene.Home do
   def init(_, opts) do
     state = %{
       graph: @base_graph,
-      options: opts
+      options: opts,
+      containers_info: %{}
     }
 
     {:ok, _timer} = :timer.send_interval(@refresh_ms, :refresh)
@@ -29,10 +31,20 @@ defmodule Midomo.Scene.Home do
   # ============================================================================
   # HANDLE EVENTS
   # ============================================================================
-  def handle_info(:refresh, %{graph: graph, options: opts} = state) do
-    IO.puts("Refresh #{DateTime.utc_now()}" )
+
+  def handle_info(:refresh, %{containers_info: old_containers_info, graph: graph, options: opts} = state) do
+    #IO.puts("Refresh interface #{DateTime.utc_now()}" )
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
-    containers_info = Docker.prepare_list_data()
+
+    task = Task.async(fn -> Docker.get_state(Process.whereis(Monitor)) end)
+
+    containers_info = case Task.yield(task, @get_docker_info_timeout) || Task.shutdown(task) do
+      {:ok, result} ->
+         result
+      nil ->
+        IO.puts "Failed to get a result in #{@get_docker_info_timeout}ms"
+        old_containers_info
+    end
 
     graph = graph
     |> clear_screen()
@@ -49,24 +61,25 @@ defmodule Midomo.Scene.Home do
 
   def filter_event({:click, id} = event, _, state) do
     IO.inspect(event)
+    monitor_pid = Process.whereis(Monitor)
 
     [action, container_id] = id |> Atom.to_string() |> String.split("_")
     case action do
       "down" ->
         IO.puts "down docker-compose"
-        Docker.down()
+        Docker.down(monitor_pid)
       "up" ->
         IO.puts("starting docker-compose")
-        Docker.up()
+        Docker.up(monitor_pid)
       "restart" ->
         IO.puts "restarting " <> container_id
-        Docker.restart(container_id)
+        Docker.restart(monitor_pid, container_id)
       "stop" ->
         IO.puts "stopping " <> container_id
-        Docker.stop(container_id)
+        Docker.stop(monitor_pid, container_id)
       "start" ->
         IO.puts "starting " <> container_id
-        Docker.start(container_id)
+        Docker.start(monitor_pid, container_id)
     end
 
     {:continue, event, state}
@@ -97,10 +110,9 @@ defmodule Midomo.Scene.Home do
 
     # LIST
   defp construct_container_list(graph, items, opts, counter \\ 1)
-  defp construct_container_list(graph, nil, _, _), do: clear_list(graph)
+  defp construct_container_list(graph, %{}, _, _), do: clear_list(graph)
   defp construct_container_list(graph, [], _, _), do: graph
   defp construct_container_list(graph, [item | remaining_items], {width, _height} = dimensions, counter) do
-    #IO.inspect(item)
 
     container_id = item[:id]
     name = item[:name]
