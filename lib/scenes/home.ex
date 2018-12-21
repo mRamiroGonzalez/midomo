@@ -20,7 +20,7 @@ defmodule Midomo.Scene.Home do
     state = %{
       graph: @base_graph,
       options: opts,
-      containers_info: %{}
+      containers_info: get_containers_info(%{})
     }
 
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
@@ -60,7 +60,7 @@ defmodule Midomo.Scene.Home do
     IO.inspect(event)
     monitor_pid = Process.whereis(Monitor)
 
-    [action, container_id] = id |> Atom.to_string() |> String.split("_")
+    [action, id] = id |> Atom.to_string() |> String.split("_")
     case action do
       "down" ->
         IO.puts "down docker-compose"
@@ -69,8 +69,11 @@ defmodule Midomo.Scene.Home do
         IO.puts("starting docker-compose")
         Docker.up(monitor_pid)
       "restart" ->
-        IO.puts "restarting " <> container_id
-        Docker.restart(monitor_pid, container_id)
+        IO.puts "restarting " <> id
+        Docker.restart(monitor_pid, id)
+      "rebuild" ->
+        IO.puts "rebuilding " <> id
+        Docker.rebuild(monitor_pid, id)
     end
 
     {:continue, event, state}
@@ -123,15 +126,18 @@ defmodule Midomo.Scene.Home do
     container_id = item[:id]
     name = item[:name]
     status = item[:status]
+    service = item[:service]
 
     toggle_button_id = String.to_atom("toggle_" <> container_id)
     status_id = String.to_atom("status_" <> container_id)
+    rebuild_id = String.to_atom("rebuild_" <> service)
     vertical_spacing = 60 + 30 * counter
     text = container_id <> " | " <> name
 
     graph = graph
     |> text(text, id: container_id, t: {10, vertical_spacing})
     |> text(status, id: status_id, t: {width - 180, vertical_spacing})
+    |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
     |> toggle((status == "running"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
     |> construct_container_list(remaining_items, dimensions, counter + 1)
   end
@@ -142,7 +148,9 @@ defmodule Midomo.Scene.Home do
   end
 
   defp clear_list(graph) do
-    graph |> rect({1280, 720}, fill: :black, t: {0, 60})
+    graph
+    |> rect({1280, 720}, fill: :black, t: {0, 60})
+    |> text("Nothing to show", t: {10, 80})
   end
 
   defp get_containers_info(old_containers_info) do
