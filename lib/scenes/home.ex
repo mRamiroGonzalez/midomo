@@ -9,7 +9,7 @@ defmodule Midomo.Scene.Home do
   alias Midomo.Docker
 
   @services_per_group 5
-  @refresh_ms 2000
+  @refresh_ms 1000
   @get_docker_info_timeout 5000
   @base_graph Graph.build(font: :roboto, font_size: 18, theme: :dark)
 
@@ -41,7 +41,6 @@ defmodule Midomo.Scene.Home do
   # ============================================================================
 
   def handle_info(:refresh, %{containers_info: old_containers_info, graph: graph, options: opts} = state) do
-    #IO.puts("Refresh interface #{DateTime.utc_now()}" )
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
     graph
@@ -119,6 +118,7 @@ defmodule Midomo.Scene.Home do
     |> button("Down", id: :down_compose, theme: :danger, t: {width - 200, 15})
   end
 
+
     # LIST
   defp construct_container_list(graph, items, opts, counter \\ 1)
   defp construct_container_list(graph, %{}, _, _), do: clear_list(graph)
@@ -145,6 +145,7 @@ defmodule Midomo.Scene.Home do
     |> construct_container_list(remaining_items, dimensions, counter + 1)
   end
 
+
     # CLEAR
   defp clear_screen(graph) do
     graph |> rect({1280, 720}, fill: :black)
@@ -156,6 +157,12 @@ defmodule Midomo.Scene.Home do
     |> text("Nothing to show", t: {10, 80})
   end
 
+
+  # ============================================================================
+  # OTHER
+  # ============================================================================
+
+    # GET INFO
   defp get_containers_info(old_containers_info) do
     task = Task.async(fn -> Docker.get_state(Process.whereis(Monitor)) end)
 

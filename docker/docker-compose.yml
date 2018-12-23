@@ -32,6 +32,36 @@ services:
       midomo:
         ipv4_address: 10.10.0.4
 
+  nginx-a:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.5
+  nginx-b:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.6
+  nginx-c:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.7
+  nginx-d:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.8
+  nginx-e:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.9
+  nginx-f:
+    image: nginx
+    networks:
+      midomo:
+        ipv4_address: 10.10.0.10
 networks:
   midomo:
     driver: bridge

@@ -34,7 +34,7 @@ defmodule Midomo.Docker do
   end
 
   def get_state(pid) do
-    IO.puts("Get state #{DateTime.utc_now()}")
+    #IO.puts("Get state #{DateTime.utc_now()}")
     GenServer.call(pid, :get_state)
   end
 
