@@ -41,7 +41,7 @@ defmodule Midomo.Docker do
 
   ## SERVER CALLBACKS
   def init(:ok) do
-    {:ok, _timer} = :timer.send_interval(@refresh_ms, :refresh)
+    Process.send_after(self(), :refresh, @refresh_ms)
     {:ok, %{}}
   end
 
@@ -49,9 +49,11 @@ defmodule Midomo.Docker do
     {:reply, state, state}
   end
 
-  def handle_info(:refresh, state) do
+  def handle_info(:refresh, _state) do
     #IO.puts("Refresh data #{DateTime.utc_now()}")
-    {:noreply, prepare_list_data()}
+    list = prepare_list_data()
+    Process.send_after(self(), :refresh, @refresh_ms)
+    {:noreply, list}
   end
 
   def handle_cast({:up, path}, state) do

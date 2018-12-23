@@ -31,7 +31,7 @@ defmodule Midomo.Scene.Home do
     |> construct_header({width, height})
     |> push_graph()
 
-    {:ok, _timer} = :timer.send_interval(@refresh_ms, :refresh)
+    Process.send_after(self(), :refresh, @refresh_ms)
     {:ok, state}
   end
 
@@ -53,6 +53,7 @@ defmodule Midomo.Scene.Home do
     |> Map.put(:containers_info, get_containers_info(old_containers_info))
     |> Map.put(:graph, graph)
 
+    Process.send_after(self(), :refresh, @refresh_ms)
     {:noreply, state}
   end
 
@@ -85,10 +86,10 @@ defmodule Midomo.Scene.Home do
     [_action, container_id] = id |> Atom.to_string() |> String.split("_")
 
     if(toggle) do
-      IO.puts "starting " <> container_id
+      IO.puts("starting " <> container_id)
       Docker.start(monitor_pid, container_id)
     else
-      IO.puts "stopping " <> container_id
+      IO.puts("stopping " <> container_id)
       Docker.stop(monitor_pid, container_id)
     end
 
@@ -137,7 +138,7 @@ defmodule Midomo.Scene.Home do
     vertical_spacing = 60 + 30 * counter
     text = container_id <> " | " <> name
 
-    graph = graph
+    graph
     |> text(text, id: container_id, t: {10, vertical_spacing})
     |> text(status, id: status_id, t: {width - 180, vertical_spacing})
     |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
@@ -166,13 +167,12 @@ defmodule Midomo.Scene.Home do
   defp get_containers_info(old_containers_info) do
     task = Task.async(fn -> Docker.get_state(Process.whereis(Monitor)) end)
 
-    containers_info = case Task.yield(task, @get_docker_info_timeout) || Task.shutdown(task) do
+    case Task.yield(task, @get_docker_info_timeout) || Task.shutdown(task) do
       {:ok, result} ->
         result
       nil ->
         IO.puts "Failed to get a result in #{@get_docker_info_timeout}ms"
         old_containers_info
     end
-
   end
 end
