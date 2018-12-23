@@ -9,8 +9,8 @@ defmodule Midomo.Scene.Home do
   alias Midomo.Docker
 
   @services_per_group 5
-  @refresh_ms 1000
-  @get_docker_info_timeout 5000
+  @refresh_ms 2000
+  @fast_refresh_ms 20
   @base_graph Graph.build(font: :roboto, font_size: 18, theme: :dark)
 
 
@@ -21,7 +21,8 @@ defmodule Midomo.Scene.Home do
     state = %{
       graph: @base_graph,
       options: opts,
-      containers_info: get_containers_info(%{})
+      containers_info: %{},
+      vertical_slide: 0
     }
 
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
@@ -40,20 +41,37 @@ defmodule Midomo.Scene.Home do
   # HANDLE EVENTS
   # ============================================================================
 
-  def handle_info(:refresh, %{containers_info: old_containers_info, graph: graph, options: opts} = state) do
+  def handle_info(:refresh,
+        %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
+    IO.puts("Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
+    |> construct_container_list(old_containers_info, {width, height, slide})
     |> construct_header({width, height})
-    |> construct_container_list(old_containers_info, {width, height})
     |> push_graph()
 
     state = state
-    |> Map.put(:containers_info, get_containers_info(old_containers_info))
+    |> Map.put(:containers_info, Docker.get_state(Process.whereis(Monitor)))
     |> Map.put(:graph, graph)
 
     Process.send_after(self(), :refresh, @refresh_ms)
+    {:noreply, state}
+  end
+
+  def handle_info(:fast_refresh,
+        %{vertical_slide: slide, containers_info: containers_info, graph: graph, options: opts} = state) do
+    {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
+
+    IO.puts("Fast Refresh - #{DateTime.utc_now()}")
+    graph
+    |> clear_screen()
+    |> construct_container_list(containers_info, {width, height, slide})
+    |> construct_header({width, height})
+    |> push_graph()
+
+    state = state |> Map.put(:graph, graph)
     {:noreply, state}
   end
 
@@ -81,6 +99,7 @@ defmodule Midomo.Scene.Home do
   end
 
   def filter_event({:value_changed, id, toggle} = event, _, state) when(is_boolean(toggle)) do
+    IO.inspect(event)
     monitor_pid = Process.whereis(Monitor)
 
     [_action, container_id] = id |> Atom.to_string() |> String.split("_")
@@ -104,6 +123,21 @@ defmodule Midomo.Scene.Home do
     {:continue, event, state}
   end
 
+  def handle_input({:key, {"up", :press, _}}, _context, state) do
+    {:noreply, slide(state, 20)}
+  end
+  def handle_input({:key, {"down", :press, _}}, _context, state) do
+    {:noreply, slide(state, -20)}
+  end
+  def handle_input({:key, {"up", :repeat, _}}, _context, state) do
+    {:noreply, slide(state, 10)}
+  end
+  def handle_input({:key, {"down", :repeat, _}}, _context, state) do
+    {:noreply, slide(state, -10)}
+  end
+  def handle_input(_input, _context, state) do
+    {:noreply, state}
+  end
 
   # ============================================================================
   # MODIFY GRAPH
@@ -124,7 +158,7 @@ defmodule Midomo.Scene.Home do
   defp construct_container_list(graph, items, opts, counter \\ 1)
   defp construct_container_list(graph, %{}, _, _), do: clear_list(graph)
   defp construct_container_list(graph, [], _, _), do: graph
-  defp construct_container_list(graph, [item | remaining_items], {width, _height} = dimensions, counter) do
+  defp construct_container_list(graph, [item | remaining_items], {width, _height, slide} = dimensions, counter) do
 
     counter = if (rem(counter, @services_per_group + 1) == 0), do: counter + 1, else: counter
     container_id = item[:id]
@@ -135,7 +169,7 @@ defmodule Midomo.Scene.Home do
     toggle_button_id = String.to_atom("toggle_" <> container_id)
     status_id = String.to_atom("status_" <> container_id)
     rebuild_id = String.to_atom("rebuild_" <> service)
-    vertical_spacing = 60 + 30 * counter
+    vertical_spacing = slide + 60 + 30 * counter
     text = container_id <> " | " <> name
 
     graph
@@ -158,21 +192,15 @@ defmodule Midomo.Scene.Home do
     |> text("Nothing to show", t: {10, 80})
   end
 
+    # OTHER
+  defp slide(state, value) do
+    current_value = state[:vertical_slide]
+    new_value = current_value + value
+    slide = if (new_value > 0), do: 0, else: new_value
 
-  # ============================================================================
-  # OTHER
-  # ============================================================================
+    state = Map.put(state, :vertical_slide, slide)
 
-    # GET INFO
-  defp get_containers_info(old_containers_info) do
-    task = Task.async(fn -> Docker.get_state(Process.whereis(Monitor)) end)
-
-    case Task.yield(task, @get_docker_info_timeout) || Task.shutdown(task) do
-      {:ok, result} ->
-        result
-      nil ->
-        IO.puts "Failed to get a result in #{@get_docker_info_timeout}ms"
-        old_containers_info
-    end
+    Process.send_after(self(), :fast_refresh, @fast_refresh_ms)
+    state
   end
 end
