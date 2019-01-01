@@ -6,7 +6,7 @@ use Mix.Config
 config :midomo, :viewport, %{
   name: :main_viewport,
   size: {1280, 720},
-  default_scene: {Midomo.Scene.Home, nil},
+  default_scene: {Midomo.Scene.ListView, nil},
   drivers: [
     %{
       module: Scenic.Driver.Glfw,

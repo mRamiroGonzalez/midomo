@@ -9,16 +9,20 @@ defmodule Midomo.Docker do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  def up(pid, path \\ "docker/docker-compose.yml") do
-    GenServer.cast(pid, {:up, path})
+  def set_path(pid, path) do
+    GenServer.cast(pid, {:path, path})
   end
 
-  def down(pid, path \\ "docker/docker-compose.yml") do
-    GenServer.cast(pid, {:down, path})
+  def up(pid) do
+    GenServer.cast(pid, :up)
   end
 
-  def rebuild(pid, service, path \\ "docker/docker-compose.yml") do
-    GenServer.cast(pid, {:rebuild, {service, path}})
+  def down(pid) do
+    GenServer.cast(pid, :down)
+  end
+
+  def rebuild(pid, service) do
+    GenServer.cast(pid, {:rebuild, service})
   end
 
   def restart(pid, id) do
@@ -33,9 +37,9 @@ defmodule Midomo.Docker do
     GenServer.cast(pid, {:stop, id})
   end
 
-  def get_state(pid) do
+  def get_list(pid) do
     #IO.puts("Get state #{DateTime.utc_now()}")
-    GenServer.call(pid, :get_state)
+    GenServer.call(pid, :get_list)
   end
 
 
@@ -45,28 +49,32 @@ defmodule Midomo.Docker do
     {:ok, %{}}
   end
 
-  def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
+  def handle_call(:get_list, _from, %{list: list} = state) do
+    {:reply, list, state}
   end
 
-  def handle_info(:refresh, _state) do
+  def handle_info(:refresh, %{path: path} = state) do
     #IO.puts("Refresh data #{DateTime.utc_now()}")
-    list = prepare_list_data()
+    list = prepare_list_data(path)
     Process.send_after(self(), :refresh, @refresh_ms)
-    {:noreply, list}
+    {:noreply, Map.put(state, :list, list)}
   end
 
-  def handle_cast({:up, path}, state) do
+  def handle_cast({:path, path}, state) do
+    {:noreply, Map.put(state, :path, path)}
+  end
+
+  def handle_cast(:up, %{path: path} = state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build"])
     {:noreply, state}
   end
 
-  def handle_cast({:rebuild, {service, path}}, state) do
+  def handle_cast({:rebuild, service}, %{path: path} = state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service])
     {:noreply, state}
   end
 
-  def handle_cast({:down, path}, state) do
+  def handle_cast(:down, %{path: path} = state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "down"])
     {:noreply, state}
   end
@@ -88,7 +96,7 @@ defmodule Midomo.Docker do
 
 
   ## PRIVATE
-  defp prepare_list_data(path \\ "docker/docker-compose.yml") do
+  defp prepare_list_data(path) do
     {result, _status} = System.cmd("docker-compose", ["-f", path, "ps", "-q"])
 
     if(result != "") do

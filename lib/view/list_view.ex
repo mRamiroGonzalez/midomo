@@ -1,4 +1,4 @@
-defmodule Midomo.Scene.Home do
+defmodule Midomo.Scene.ListView do
   use Scenic.Scene
   alias Scenic.Graph
 
@@ -32,6 +32,9 @@ defmodule Midomo.Scene.Home do
     |> construct_header({width, height})
     |> push_graph()
 
+    monitor_pid = Process.whereis(Monitor)
+    Docker.set_path(monitor_pid, "docker/docker-compose.yml")
+
     Process.send_after(self(), :refresh, @refresh_ms)
     {:ok, state}
   end
@@ -45,7 +48,7 @@ defmodule Midomo.Scene.Home do
         %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    IO.puts("Refresh - #{DateTime.utc_now()}")
+    #IO.puts("Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(old_containers_info, {width, height, slide})
@@ -53,7 +56,7 @@ defmodule Midomo.Scene.Home do
     |> push_graph()
 
     state = state
-    |> Map.put(:containers_info, Docker.get_state(Process.whereis(Monitor)))
+    |> Map.put(:containers_info, Docker.get_list(Process.whereis(Monitor)))
     |> Map.put(:graph, graph)
 
     Process.send_after(self(), :refresh, @refresh_ms)
@@ -64,7 +67,7 @@ defmodule Midomo.Scene.Home do
         %{vertical_slide: slide, containers_info: containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    IO.puts("Fast Refresh - #{DateTime.utc_now()}")
+    #IO.puts("Fast Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(containers_info, {width, height, slide})
