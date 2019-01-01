@@ -17,6 +17,10 @@ defmodule Midomo.Docker do
     GenServer.cast(pid, {:down, path})
   end
 
+  def rebuild(pid, service, path \\ "docker/docker-compose.yml") do
+    GenServer.cast(pid, {:rebuild, {service, path}})
+  end
+
   def restart(pid, id) do
     GenServer.cast(pid, {:restart, id})
   end
@@ -30,14 +34,14 @@ defmodule Midomo.Docker do
   end
 
   def get_state(pid) do
-    IO.puts("Get state #{DateTime.utc_now()}")
+    #IO.puts("Get state #{DateTime.utc_now()}")
     GenServer.call(pid, :get_state)
   end
 
 
   ## SERVER CALLBACKS
   def init(:ok) do
-    {:ok, _timer} = :timer.send_interval(@refresh_ms, :refresh)
+    Process.send_after(self(), :refresh, @refresh_ms)
     {:ok, %{}}
   end
 
@@ -45,13 +49,20 @@ defmodule Midomo.Docker do
     {:reply, state, state}
   end
 
-  def handle_info(:refresh, state) do
+  def handle_info(:refresh, _state) do
     #IO.puts("Refresh data #{DateTime.utc_now()}")
-    {:noreply, prepare_list_data()}
+    list = prepare_list_data()
+    Process.send_after(self(), :refresh, @refresh_ms)
+    {:noreply, list}
   end
 
   def handle_cast({:up, path}, state) do
     {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build"])
+    {:noreply, state}
+  end
+
+  def handle_cast({:rebuild, {service, path}}, state) do
+    {_result, _status} = System.cmd("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service])
     {:noreply, state}
   end
 
@@ -95,6 +106,7 @@ defmodule Midomo.Docker do
         |> put_in([:image],   get_in(docker_inspect_map, ["Config", "Image"]))
         |> put_in([:status],  get_in(docker_inspect_map, ["State", "Status"]))
         |> put_in([:name],    get_in(docker_inspect_map, ["Name"]) |> String.trim("/"))
+        |> put_in([:service], get_in(docker_inspect_map, ["Config", "Labels", "com.docker.compose.service"]))
 
         [item | acc]
       end)
