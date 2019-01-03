@@ -1,7 +1,7 @@
 defmodule Midomo.Docker do
   use GenServer
 
-  @refresh_ms 1000
+  @refresh_ms 2000
 
 
   ## CLIENT API
@@ -45,7 +45,7 @@ defmodule Midomo.Docker do
 
   ## SERVER CALLBACKS
   def init(:ok) do
-    Process.send_after(self(), :refresh, @refresh_ms)
+    Process.send_after(self(), :refresh, 0)
     {:ok, %{}}
   end
 
@@ -62,6 +62,12 @@ defmodule Midomo.Docker do
     list = prepare_list_data(path)
     Process.send_after(self(), :refresh, @refresh_ms)
     {:noreply, Map.put(state, :list, list)}
+  end
+
+  def handle_info(:refresh, %{}) do
+    #IO.puts("Refresh data #{DateTime.utc_now()}")
+    Process.send_after(self(), :refresh, 1000)
+    {:noreply, %{}}
   end
 
   def handle_cast({:path, path}, state) do

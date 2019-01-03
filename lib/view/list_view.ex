@@ -10,8 +10,7 @@ defmodule Midomo.Scene.ListView do
   alias Midomo.ListController
 
   @services_per_group 5
-  @refresh_ms 2000
-  @fast_refresh_ms 20
+  @refresh_ms 16
   @base_graph Graph.build(font: :roboto, font_size: 18, theme: :dark)
 
 
@@ -90,22 +89,11 @@ defmodule Midomo.Scene.ListView do
     ListController.toggle_action(id, toggle)
     {:continue, event, state}
   end
-
-
-  def handle_input({:key, {"up", :press, _}}, _context, state) do
-    {:noreply, slide(state, 20)}
-  end
-  def handle_input({:key, {"down", :press, _}}, _context, state) do
-    {:noreply, slide(state, -20)}
-  end
-  def handle_input({:key, {"up", :repeat, _}}, _context, state) do
-    {:noreply, slide(state, 10)}
-  end
-  def handle_input({:key, {"down", :repeat, _}}, _context, state) do
-    {:noreply, slide(state, -10)}
-  end
-  def handle_input(_input, _context, state) do
-    {:noreply, state}
+  def filter_event({:value_changed, :pos_y, y} = event, _, %{graph: graph} = state) do
+    graph =
+      graph
+      |> Graph.modify(:list, &update_opts(&1, translate: {0, y}))
+    {:continue, event, %{state | graph: graph, vertical_slide: -y}}
   end
 
   # ============================================================================
@@ -116,6 +104,7 @@ defmodule Midomo.Scene.ListView do
   defp construct_header(graph, {width, _height}) do
     graph
     |> rect({width, 60}, fill: {48, 48, 48})
+    |> slider({{0, 600}, 0}, id: :pos_y, translate: {1260, 65}, rotate: 1.5708, width: 640)
     |> button("Up", id: :up_compose, theme: :success, t: {width - 100, 15})
     |> button("Down", id: :down_compose, theme: :danger, t: {width - 200, 15})
   end
@@ -139,12 +128,17 @@ defmodule Midomo.Scene.ListView do
     vertical_spacing = slide + 60 + 30 * counter
     text = container_id <> " | " <> name
 
-    graph
-    |> text(text, id: container_id, t: {10, vertical_spacing})
-    |> text(status, id: status_id, t: {width - 180, vertical_spacing})
-    |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
-    |> toggle((status == "running"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
-    |> construct_container_list(remaining_items, dimensions, counter + 1)
+    graph |>
+    group(
+      fn g ->
+        g
+        |> text(text, id: container_id, t: {10, vertical_spacing})
+        |> text(status, id: status_id, t: {width - 180, vertical_spacing})
+        |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
+        |> toggle((status == "running"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
+        |> construct_container_list(remaining_items, dimensions, counter + 1)
+      end,
+      id: :list)
   end
 
 
@@ -157,17 +151,5 @@ defmodule Midomo.Scene.ListView do
     graph
     |> rect({1280, 720}, fill: :black, t: {0, 60})
     |> text("Nothing to show", t: {10, 80})
-  end
-
-    # OTHER
-  defp slide(state, value) do
-    current_value = state[:vertical_slide]
-    new_value = current_value + value
-    slide = if (new_value > 0), do: 0, else: new_value
-
-    state = Map.put(state, :vertical_slide, slide)
-
-    Process.send_after(self(), :fast_refresh, @fast_refresh_ms)
-    state
   end
 end
