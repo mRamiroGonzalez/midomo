@@ -7,6 +7,7 @@ defmodule Midomo.Scene.ListView do
   import Scenic.Components
 
   alias Midomo.Docker
+  alias Midomo.ListController
 
   @services_per_group 5
   @refresh_ms 2000
@@ -48,7 +49,7 @@ defmodule Midomo.Scene.ListView do
         %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    IO.puts("Refresh - #{DateTime.utc_now()}")
+    #IO.puts("Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(old_containers_info, {width, height, slide})
@@ -67,7 +68,7 @@ defmodule Midomo.Scene.ListView do
         %{vertical_slide: slide, containers_info: containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    IO.puts("Fast Refresh - #{DateTime.utc_now()}")
+    #IO.puts("Fast Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(containers_info, {width, height, slide})
@@ -78,53 +79,18 @@ defmodule Midomo.Scene.ListView do
     {:noreply, state}
   end
 
+
   def filter_event({:click, id} = event, _, state) do
     IO.inspect(event)
-    monitor_pid = Process.whereis(ComposeMonitor)
-
-    [action, id] = id |> Atom.to_string() |> String.split("_")
-    case action do
-      "down" ->
-        IO.puts "down docker-compose"
-        Docker.down(monitor_pid)
-      "up" ->
-        IO.puts("starting docker-compose")
-        Docker.up(monitor_pid)
-      "restart" ->
-        IO.puts "restarting " <> id
-        Docker.restart(monitor_pid, id)
-      "rebuild" ->
-        IO.puts "rebuilding " <> id
-        Docker.rebuild(monitor_pid, id)
-    end
-
+    ListController.click_action(id)
     {:continue, event, state}
   end
-
   def filter_event({:value_changed, id, toggle} = event, _, state) when(is_boolean(toggle)) do
     IO.inspect(event)
-    monitor_pid = Process.whereis(ComposeMonitor)
-
-    [_action, container_id] = id |> Atom.to_string() |> String.split("_")
-
-    if(toggle) do
-      IO.puts("starting " <> container_id)
-      Docker.start(monitor_pid, container_id)
-    else
-      IO.puts("stopping " <> container_id)
-      Docker.stop(monitor_pid, container_id)
-    end
-
+    ListController.toggle_action(id, toggle)
     {:continue, event, state}
   end
 
-  def filter_event({:value_changed, :text, text} = event, _, state) do
-    IO.inspect(event)
-
-    state = Map.put(state, :docker_compose_path, text)
-    IO.inspect(state)
-    {:continue, event, state}
-  end
 
   def handle_input({:key, {"up", :press, _}}, _context, state) do
     {:noreply, slide(state, 20)}
@@ -150,8 +116,6 @@ defmodule Midomo.Scene.ListView do
   defp construct_header(graph, {width, _height}) do
     graph
     |> rect({width, 60}, fill: {48, 48, 48})
-    |> text("docker-compose path:", translate: {15, 35}, align: :right)
-    |> text_field("docker/docker-compose.yml", id: :text, width: 200, t: {200, 15})
     |> button("Up", id: :up_compose, theme: :success, t: {width - 100, 15})
     |> button("Down", id: :down_compose, theme: :danger, t: {width - 200, 15})
   end
