@@ -49,8 +49,12 @@ defmodule Midomo.Docker do
     {:ok, %{}}
   end
 
-  def handle_call(:get_list, _from, %{list: list} = state) do
-    {:reply, list, state}
+  def handle_call(:get_list, _from, state) do
+    if (Map.has_key?(state, :list)) do
+      {:reply, Map.get(state, :list), state}
+    else
+      {:reply, %{}, state}
+    end
   end
 
   def handle_info(:refresh, %{path: path} = state) do

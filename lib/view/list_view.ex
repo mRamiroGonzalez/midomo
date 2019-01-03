@@ -32,7 +32,7 @@ defmodule Midomo.Scene.ListView do
     |> construct_header({width, height})
     |> push_graph()
 
-    monitor_pid = Process.whereis(Monitor)
+    monitor_pid = Process.whereis(ComposeMonitor)
     Docker.set_path(monitor_pid, "docker/docker-compose.yml")
 
     Process.send_after(self(), :refresh, @refresh_ms)
@@ -48,7 +48,7 @@ defmodule Midomo.Scene.ListView do
         %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    #IO.puts("Refresh - #{DateTime.utc_now()}")
+    IO.puts("Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(old_containers_info, {width, height, slide})
@@ -56,7 +56,7 @@ defmodule Midomo.Scene.ListView do
     |> push_graph()
 
     state = state
-    |> Map.put(:containers_info, Docker.get_list(Process.whereis(Monitor)))
+    |> Map.put(:containers_info, Docker.get_list(Process.whereis(ComposeMonitor)))
     |> Map.put(:graph, graph)
 
     Process.send_after(self(), :refresh, @refresh_ms)
@@ -67,7 +67,7 @@ defmodule Midomo.Scene.ListView do
         %{vertical_slide: slide, containers_info: containers_info, graph: graph, options: opts} = state) do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    #IO.puts("Fast Refresh - #{DateTime.utc_now()}")
+    IO.puts("Fast Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(containers_info, {width, height, slide})
@@ -80,7 +80,7 @@ defmodule Midomo.Scene.ListView do
 
   def filter_event({:click, id} = event, _, state) do
     IO.inspect(event)
-    monitor_pid = Process.whereis(Monitor)
+    monitor_pid = Process.whereis(ComposeMonitor)
 
     [action, id] = id |> Atom.to_string() |> String.split("_")
     case action do
@@ -103,7 +103,7 @@ defmodule Midomo.Scene.ListView do
 
   def filter_event({:value_changed, id, toggle} = event, _, state) when(is_boolean(toggle)) do
     IO.inspect(event)
-    monitor_pid = Process.whereis(Monitor)
+    monitor_pid = Process.whereis(ComposeMonitor)
 
     [_action, container_id] = id |> Atom.to_string() |> String.split("_")
 
