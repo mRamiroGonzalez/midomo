@@ -14,6 +14,7 @@ defmodule Midomo.Scene.ListView do
   @base_graph Graph.build(font: :roboto, font_size: 18, theme: :dark)
 
 
+
   # ============================================================================
   # SETUP
   # ============================================================================
@@ -21,7 +22,7 @@ defmodule Midomo.Scene.ListView do
     state = %{
       graph: @base_graph,
       options: opts,
-      containers_info: %{},
+      containers_info: [],
       vertical_slide: 0
     }
 
@@ -40,6 +41,7 @@ defmodule Midomo.Scene.ListView do
   end
 
 
+
   # ============================================================================
   # HANDLE EVENTS
   # ============================================================================
@@ -48,19 +50,14 @@ defmodule Midomo.Scene.ListView do
 
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    #IO.puts("Refresh - #{DateTime.utc_now()}")
     graph
     |> clear_screen()
     |> construct_container_list(old_containers_info, {width, height, slide})
     |> construct_header({width, height})
     |> push_graph()
 
-    state = state
-    |> Map.put(:containers_info, ListController.get_container_info())
-    |> Map.put(:graph, graph)
-
     Process.send_after(self(), :refresh, @refresh_ms)
-    {:noreply, state}
+    {:noreply, %{state | containers_info: ListController.get_container_info(), graph: graph}}
   end
 
   def filter_event({:click, id} = event, _, state) do
@@ -80,6 +77,8 @@ defmodule Midomo.Scene.ListView do
     {:continue, event, %{state | graph: graph, vertical_slide: -y}}
   end
 
+
+
   # ============================================================================
   # MODIFY GRAPH
   # ============================================================================
@@ -96,8 +95,7 @@ defmodule Midomo.Scene.ListView do
 
     # LIST
   defp construct_container_list(graph, items, opts, counter \\ 1)
-  defp construct_container_list(graph, %{}, _, _), do: clear_list(graph)
-  defp construct_container_list(graph, [], _, _), do: graph
+  defp construct_container_list(graph, [], _, _), do: clear_list(graph)
   defp construct_container_list(graph, [item | remaining_items], {width, _height, slide} = dimensions, counter) do
 
 #    %{
@@ -111,7 +109,6 @@ defmodule Midomo.Scene.ListView do
     counter = if (rem(counter, @services_per_group + 1) == 0), do: counter + 1, else: counter
     name = item[:name]
     status = item[:status]
-    service = item[:service]
 
     toggle_button_id = String.to_atom("toggle_" <> name)
     status_id = String.to_atom("status_" <> name)
@@ -119,16 +116,21 @@ defmodule Midomo.Scene.ListView do
     vertical_spacing = slide + 60 + 30 * counter
     text = name
 
-    graph |> group(
+    graph = graph |> group(
       fn g ->
         g
         |> text(text, t: {10, vertical_spacing})
         |> text(status, id: status_id, t: {width - 180, vertical_spacing})
         |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
         |> toggle((status == "Up"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
-        |> construct_container_list(remaining_items, dimensions, counter + 1)
       end,
       id: :list)
+
+    if (remaining_items == []) do
+      graph
+    else
+      construct_container_list(graph, remaining_items, dimensions, counter + 1)
+    end
   end
 
 

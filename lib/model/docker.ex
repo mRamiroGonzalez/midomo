@@ -54,37 +54,43 @@ defmodule Midomo.Docker do
   end
 
   def handle_cast(:up, %{path: path} = state) do
-    Task.start fn -> System.cmd("docker-compose", ["-f", path, "up", "-d", "--build"]) end
+    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build"])
     {:noreply, state}
   end
 
   def handle_cast({:rebuild, service}, %{path: path} = state) do
-    Task.start fn -> System.cmd("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service]) end
+    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service])
     {:noreply, state}
   end
 
   def handle_cast(:down, %{path: path} = state) do
-    Task.start fn -> System.cmd("docker-compose", ["-f", path, "down"]) end
+    send_docker_command("docker-compose", ["-f", path, "down"])
     {:noreply, state}
   end
 
   def handle_cast({:restart, id}, state) do
-    Task.start fn -> System.cmd("docker", ["restart", id]) end
+    send_docker_command("docker", ["restart", id])
     {:noreply, state}
   end
 
   def handle_cast({:stop, id}, state) do
-    Task.start fn -> System.cmd("docker", ["stop", id]) end
+    send_docker_command("docker", ["stop", id])
     {:noreply, state}
   end
 
   def handle_cast({:start, id}, state) do
-    Task.start fn -> System.cmd("docker", ["start", id]) end
+    send_docker_command("docker", ["start", id])
     {:noreply, state}
   end
 
 
   ## PRIVATE
+  defp send_docker_command(command, args) do
+    Task.start fn ->
+      System.cmd(command, args)
+    end
+  end
+
   defp prepare_list_data(path) do
     {result, _status} = System.cmd("docker-compose", ["-f", path, "ps"])
     lines = result
@@ -102,7 +108,7 @@ defmodule Midomo.Docker do
     get_in(docker_inspect_map, ["Config", "Hostname"])
   end
 
-  def get_containers_info(path) do
+  defp get_containers_info(path) do
     info = case prepare_list_data(path) do
       [""] ->
         []
