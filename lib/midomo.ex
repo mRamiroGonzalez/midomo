@@ -12,10 +12,9 @@ defmodule Midomo do
     # start the application with the viewport
     children = [
       supervisor(Scenic, viewports: [main_viewport_config]),
-      {Midomo.Docker, name: Monitor}
+      {Midomo.Docker, name: ComposeMonitor}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
-    #Midomo.Docker.prepare_list_data()
   end
 end
