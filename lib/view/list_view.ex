@@ -44,8 +44,8 @@ defmodule Midomo.Scene.ListView do
   # HANDLE EVENTS
   # ============================================================================
 
-  def handle_info(:refresh,
-        %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
+  def handle_info(:refresh, %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
+
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
     #IO.puts("Refresh - #{DateTime.utc_now()}")
@@ -56,36 +56,20 @@ defmodule Midomo.Scene.ListView do
     |> push_graph()
 
     state = state
-    |> Map.put(:containers_info, Docker.get_list(Process.whereis(ComposeMonitor)))
+    |> Map.put(:containers_info, ListController.get_container_info())
     |> Map.put(:graph, graph)
 
     Process.send_after(self(), :refresh, @refresh_ms)
     {:noreply, state}
   end
 
-  def handle_info(:fast_refresh,
-        %{vertical_slide: slide, containers_info: containers_info, graph: graph, options: opts} = state) do
-    {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
-
-    #IO.puts("Fast Refresh - #{DateTime.utc_now()}")
-    graph
-    |> clear_screen()
-    |> construct_container_list(containers_info, {width, height, slide})
-    |> construct_header({width, height})
-    |> push_graph()
-
-    state = state |> Map.put(:graph, graph)
-    {:noreply, state}
-  end
-
-
   def filter_event({:click, id} = event, _, state) do
-    IO.inspect(event)
+    #IO.inspect(event)
     ListController.click_action(id)
     {:continue, event, state}
   end
   def filter_event({:value_changed, id, toggle} = event, _, state) when(is_boolean(toggle)) do
-    IO.inspect(event)
+    #IO.inspect(event)
     ListController.toggle_action(id, toggle)
     {:continue, event, state}
   end
@@ -116,26 +100,32 @@ defmodule Midomo.Scene.ListView do
   defp construct_container_list(graph, [], _, _), do: graph
   defp construct_container_list(graph, [item | remaining_items], {width, _height, slide} = dimensions, counter) do
 
+#    %{
+#      command: "nginx -g daemon off;",
+#      name: "docker_nginx-o_1",
+#      ports: "80/tcp",
+#      service: "nginx-o",
+#      status: "Up"
+#    }
+
     counter = if (rem(counter, @services_per_group + 1) == 0), do: counter + 1, else: counter
-    container_id = item[:id]
     name = item[:name]
     status = item[:status]
     service = item[:service]
 
-    toggle_button_id = String.to_atom("toggle_" <> container_id)
-    status_id = String.to_atom("status_" <> container_id)
-    rebuild_id = String.to_atom("rebuild_" <> service)
+    toggle_button_id = String.to_atom("toggle_" <> name)
+    status_id = String.to_atom("status_" <> name)
+    rebuild_id = String.to_atom("rebuild_" <> name)
     vertical_spacing = slide + 60 + 30 * counter
-    text = container_id <> " | " <> name
+    text = name
 
-    graph |>
-    group(
+    graph |> group(
       fn g ->
         g
-        |> text(text, id: container_id, t: {10, vertical_spacing})
+        |> text(text, t: {10, vertical_spacing})
         |> text(status, id: status_id, t: {width - 180, vertical_spacing})
         |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
-        |> toggle((status == "running"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
+        |> toggle((status == "Up"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
         |> construct_container_list(remaining_items, dimensions, counter + 1)
       end,
       id: :list)
