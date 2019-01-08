@@ -18,6 +18,7 @@ defmodule Midomo.Docker do
   def start(pid, id), do: GenServer.cast(pid, {:start, id})
   def stop(pid, id), do: GenServer.cast(pid, {:stop, id})
   def restart(pid, id), do: GenServer.cast(pid, {:restart, id})
+  def logs(pid, id), do: GenServer.cast(pid, {:logs, id})
 
 
 
@@ -73,6 +74,11 @@ defmodule Midomo.Docker do
     {:noreply, state}
   end
 
+  def handle_cast({:logs, id},  %{path: path} = state) do
+    send_docker_command_another_tab("docker", ["logs", "-f", id], path)
+    {:noreply, state}
+  end
+
   def handle_cast({:stop, id},  %{path: path} = state) do
     send_docker_command("docker", ["stop", id], path)
     {:noreply, state}
@@ -93,6 +99,11 @@ defmodule Midomo.Docker do
 
   defp send_docker_command_and_get_result(command, args, docker_directory) do
     {result, _status} = System.cmd(command, args, cd: docker_directory)
+    result
+  end
+
+  defp send_docker_command_another_tab(command, args, docker_directory) do
+    {result, _status} = System.cmd("x-terminal-emulator", ["-e", command] ++ args)
     result
   end
 
