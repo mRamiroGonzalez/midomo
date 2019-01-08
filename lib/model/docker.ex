@@ -54,46 +54,50 @@ defmodule Midomo.Docker do
   end
 
   def handle_cast(:up, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build"])
+    send_docker_command("docker-compose", ["up", "-d", "--build"], path)
     {:noreply, state}
   end
 
   def handle_cast({:rebuild, service}, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service])
+    send_docker_command("docker-compose", ["up", "-d", "--build", "--no-deps", service], path)
     {:noreply, state}
   end
 
   def handle_cast(:down, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "down"])
+    send_docker_command("docker-compose", ["down"], path)
     {:noreply, state}
   end
 
-  def handle_cast({:restart, id}, state) do
-    send_docker_command("docker", ["restart", id])
+  def handle_cast({:restart, id},  %{path: path} = state) do
+    send_docker_command("docker", ["restart", id], path)
     {:noreply, state}
   end
 
-  def handle_cast({:stop, id}, state) do
-    send_docker_command("docker", ["stop", id])
+  def handle_cast({:stop, id},  %{path: path} = state) do
+    send_docker_command("docker", ["stop", id], path)
     {:noreply, state}
   end
 
-  def handle_cast({:start, id}, state) do
-    send_docker_command("docker", ["start", id])
+  def handle_cast({:start, id},  %{path: path} = state) do
+    send_docker_command("docker", ["start", id], path)
     {:noreply, state}
   end
 
 
   ## PRIVATE
-  defp send_docker_command(command, args) do
+  defp send_docker_command(command, args, docker_directory) do
     Task.start fn ->
-      System.cmd(command, args)
+      System.cmd(command, args, cd: docker_directory)
     end
   end
 
+  defp send_docker_command_and_get_result(command, args, docker_directory) do
+    {result, _status} = System.cmd(command, args, cd: docker_directory)
+    result
+  end
+
   defp prepare_list_data(path) do
-    {result, _status} = System.cmd("docker-compose", ["-f", path, "ps"])
-    lines = result
+    lines = send_docker_command_and_get_result("docker-compose", ["ps",], path)
     |> String.trim("\n")                    # Remove last newline
     |> String.replace(~r/ {3,}/, "|")       # Remove spaces and replace with a pipe character
     |> String.split("\n")                   # Split the result on new lines
