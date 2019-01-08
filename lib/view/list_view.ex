@@ -122,7 +122,7 @@ defmodule Midomo.Scene.ListView do
         |> text(text, t: {10, vertical_spacing})
         |> text(status, id: status_id, t: {width - 180, vertical_spacing})
         |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
-        |> toggle((status == "Up"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
+        |> toggle((status == "Up"), id: toggle_button_id, hidden: (status == "Unknown"), t: {width - 100, vertical_spacing - 5})
       end,
       id: :list)
 
