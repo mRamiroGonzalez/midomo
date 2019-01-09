@@ -13,6 +13,8 @@ defmodule Midomo.Docker do
 
   def up(pid), do: GenServer.cast(pid, :up)
   def down(pid), do: GenServer.cast(pid, :down)
+  def start(pid), do: GenServer.cast(pid, :start)
+  def stop(pid), do: GenServer.cast(pid, :stop)
   def rebuild(pid, service), do: GenServer.cast(pid, {:rebuild, service})
 
   def start(pid, id), do: GenServer.cast(pid, {:start, id})
@@ -60,13 +62,23 @@ defmodule Midomo.Docker do
     {:noreply, state}
   end
 
-  def handle_cast({:rebuild, service}, %{path: path} = state) do
-    send_docker_command("docker-compose", ["up", "-d", "--build", "--no-deps", service], path)
+  def handle_cast(:down, %{path: path} = state) do
+    send_docker_command("docker-compose", ["down"], path)
     {:noreply, state}
   end
 
-  def handle_cast(:down, %{path: path} = state) do
-    send_docker_command("docker-compose", ["down"], path)
+  def handle_cast(:start, %{path: path} = state) do
+    send_docker_command("docker-compose", ["start"], path)
+    {:noreply, state}
+  end
+
+  def handle_cast(:stop, %{path: path} = state) do
+    send_docker_command("docker-compose", ["stop"], path)
+    {:noreply, state}
+  end
+
+  def handle_cast({:rebuild, service}, %{path: path} = state) do
+    send_docker_command("docker-compose", ["up", "-d", "--build", "--no-deps", service], path)
     {:noreply, state}
   end
 

@@ -32,96 +32,15 @@ services:
       midomo:
         ipv4_address: 10.10.0.4
 
-  nginx-a:
-    image: nginx
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=username
+      - RABBITMQ_DEFAULT_PASS=password
     networks:
       midomo:
         ipv4_address: 10.10.0.5
-  nginx-b:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.6
-  nginx-c:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.7
-  nginx-d:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.8
-  nginx-e:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.9
-  nginx-f:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.10
-  nginx-g:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.11
-  nginx-h:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.12
-  nginx-i:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.13
-  nginx-j:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.14
-  nginx-k:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.15
-  nginx-l:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.16
-  nginx-m:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.17
-  nginx-n:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.18
-  nginx-o:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.19
-  nginx-p:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.20
-  nginx-q:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.21
-  nginx-r:
-    image: nginx
-    networks:
-      midomo:
-        ipv4_address: 10.10.0.22
+
 networks:
   midomo:
     driver: bridge

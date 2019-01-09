@@ -34,7 +34,7 @@ defmodule Midomo.Scene.ListView do
     |> push_graph()
 
     monitor_pid = Process.whereis(ComposeMonitor)
-    Docker.set_path(monitor_pid, "docker/docker-compose.yml")
+    Docker.set_path(monitor_pid, "docker/")
 
     Process.send_after(self(), :refresh, @refresh_ms)
     {:ok, state}
@@ -88,8 +88,10 @@ defmodule Midomo.Scene.ListView do
     graph
     |> rect({width, 60}, fill: {48, 48, 48})
     |> slider({{0, 600}, 0}, id: :pos_y, translate: {1260, 65}, rotate: 1.5708, width: 640)
-    |> button("Up", id: :up_compose, theme: :success, t: {width - 100, 15})
-    |> button("Down", id: :down_compose, theme: :danger, t: {width - 200, 15})
+    |> button("Start", id: :start_compose, theme: :success, t: {width - 450, 15})
+    |> button("Stop", id: :stop_compose, theme: :danger, t: {width - 350, 15})
+    |> button("Up", id: :up_compose, theme: :success, t: {width - 200, 15})
+    |> button("Down", id: :down_compose, theme: :danger, t: {width - 100, 15})
   end
 
 

@@ -12,11 +12,17 @@ defmodule Midomo.ListController do
     name = button_id |> Atom.to_string()
     case name |> String.split("_") do
       ["down", _] ->
-        IO.puts "down docker-compose"
+        IO.puts "docker-compose down"
         Docker.down(monitor_pid)
       ["up", _] ->
-        IO.puts("starting docker-compose")
+        IO.puts("docker-compose up")
         Docker.up(monitor_pid)
+      ["stop", _] ->
+        IO.puts "docker-compose stop "
+        Docker.stop(monitor_pid)
+      ["start", _] ->
+        IO.puts("docker-compose start ")
+        Docker.start(monitor_pid)
       ["restart", _, service, _] ->
         IO.puts "restarting " <> service
         Docker.restart(monitor_pid, service)
