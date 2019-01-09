@@ -18,6 +18,8 @@ defmodule Midomo.Docker do
   def start(pid, id), do: GenServer.cast(pid, {:start, id})
   def stop(pid, id), do: GenServer.cast(pid, {:stop, id})
   def restart(pid, id), do: GenServer.cast(pid, {:restart, id})
+  def logs(pid, id), do: GenServer.cast(pid, {:logs, id})
+  def cmd(pid, id), do: GenServer.cast(pid, {:cmd, id})
 
 
 
@@ -54,46 +56,65 @@ defmodule Midomo.Docker do
   end
 
   def handle_cast(:up, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build"])
+    send_docker_command("docker-compose", ["up", "-d", "--build"], path)
     {:noreply, state}
   end
 
   def handle_cast({:rebuild, service}, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "up", "-d", "--build", "--no-deps", service])
+    send_docker_command("docker-compose", ["up", "-d", "--build", "--no-deps", service], path)
     {:noreply, state}
   end
 
   def handle_cast(:down, %{path: path} = state) do
-    send_docker_command("docker-compose", ["-f", path, "down"])
+    send_docker_command("docker-compose", ["down"], path)
     {:noreply, state}
   end
 
-  def handle_cast({:restart, id}, state) do
-    send_docker_command("docker", ["restart", id])
+  def handle_cast({:restart, id},  %{path: path} = state) do
+    send_docker_command("docker", ["restart", id], path)
     {:noreply, state}
   end
 
-  def handle_cast({:stop, id}, state) do
-    send_docker_command("docker", ["stop", id])
+  def handle_cast({:logs, id},  %{path: path} = state) do
+    send_docker_command_another_tab("docker", ["logs", "-f", id], path)
     {:noreply, state}
   end
 
-  def handle_cast({:start, id}, state) do
-    send_docker_command("docker", ["start", id])
+  def handle_cast({:cmd, id},  %{path: path} = state) do
+    send_docker_command_another_tab("docker", ["exec", "-ti", id, "bash"], path)
+    {:noreply, state}
+  end
+
+  def handle_cast({:stop, id},  %{path: path} = state) do
+    send_docker_command("docker", ["stop", id], path)
+    {:noreply, state}
+  end
+
+  def handle_cast({:start, id},  %{path: path} = state) do
+    send_docker_command("docker", ["start", id], path)
     {:noreply, state}
   end
 
 
   ## PRIVATE
-  defp send_docker_command(command, args) do
+  defp send_docker_command(command, args, docker_directory) do
     Task.start fn ->
-      System.cmd(command, args)
+      System.cmd(command, args, cd: docker_directory)
     end
   end
 
+  defp send_docker_command_and_get_result(command, args, docker_directory) do
+    {result, _status} = System.cmd(command, args, cd: docker_directory)
+    result
+  end
+
+  defp send_docker_command_another_tab(command, args, docker_directory) do
+    {result, _status} = System.cmd("x-terminal-emulator", ["-e", command] ++ args)
+    result
+  end
+
   defp prepare_list_data(path) do
-    {result, _status} = System.cmd("docker-compose", ["-f", path, "ps"])
-    lines = result
+    lines = send_docker_command_and_get_result("docker-compose", ["ps",], path)
     |> String.trim("\n")                    # Remove last newline
     |> String.replace(~r/ {3,}/, "|")       # Remove spaces and replace with a pipe character
     |> String.split("\n")                   # Split the result on new lines
@@ -119,13 +140,43 @@ defmodule Midomo.Docker do
           container_info = %{
             name: name,
             command: Enum.at(info, 1),
-            status: Enum.at(info, 2),
-            ports: Enum.at(info, 3),
+            status: find_state(container),
+            ports: find_ports(container),
             service: Enum.at(String.split(name, "_"), 1)
           }
           [container_info | acc]
         end)
     end
     Enum.reverse(info)
+  end
+
+  defp find_state(line) do
+    # if more than 3 spaces in the commands, the state will not be on the correct column and we have to find it
+    state = line
+    |> String.split("|")
+    |> Enum.find(fn (x) ->
+      cond do
+        x == "Up" -> true
+        String.starts_with?(x, "Exit") -> true
+        true -> false
+      end
+    end)
+#    IO.puts("Found state: #{state}")
+    if (state == nil), do: "Unknown", else: state
+  end
+
+  defp find_ports(line) do
+    # if more than 3 spaces in the commands, the ports will not be on the correct column and we have to find them
+    ports_regex = ~r/([0-9]+\/[a-z]+,* *)+/
+    ports = line
+    |> String.split("|")
+    |> Enum.find(fn (x) ->
+      cond do
+        Regex.match?(ports_regex, x) -> true
+        true -> false
+      end
+    end)
+#    IO.puts("Found ports: #{ports}")
+    ports
   end
 end

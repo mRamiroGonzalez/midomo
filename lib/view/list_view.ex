@@ -113,6 +113,8 @@ defmodule Midomo.Scene.ListView do
     toggle_button_id = String.to_atom("toggle_" <> name)
     status_id = String.to_atom("status_" <> name)
     rebuild_id = String.to_atom("rebuild_" <> name)
+    logs_id = String.to_atom("logs_" <> name)
+    cmd_id = String.to_atom("cmd_" <> name)
     vertical_spacing = slide + 60 + 30 * counter
     text = name
 
@@ -121,8 +123,10 @@ defmodule Midomo.Scene.ListView do
         g
         |> text(text, t: {10, vertical_spacing})
         |> text(status, id: status_id, t: {width - 180, vertical_spacing})
+        |> button("Cmd", id: cmd_id, height: 18, button_font_size: 17, theme: :light, t: {width - 500, vertical_spacing - 15})
+        |> button("Logs", id: logs_id, height: 18, button_font_size: 17, theme: :success, t: {width - 400, vertical_spacing - 15})
         |> button("Rebuild", id: rebuild_id, height: 18, button_font_size: 17, theme: :warning, t: {width - 300, vertical_spacing - 15})
-        |> toggle((status == "Up"), id: toggle_button_id, t: {width - 100, vertical_spacing - 5})
+        |> toggle((status == "Up"), id: toggle_button_id, hidden: (status == "Unknown"), t: {width - 100, vertical_spacing - 5})
       end,
       id: :list)
 

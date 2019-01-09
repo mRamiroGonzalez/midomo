@@ -9,7 +9,8 @@ defmodule Midomo.ListController do
   def click_action(button_id) do
     monitor_pid = Process.whereis(ComposeMonitor)
 
-    case button_id |> Atom.to_string() |> String.split("_") do
+    name = button_id |> Atom.to_string()
+    case name |> String.split("_") do
       ["down", _] ->
         IO.puts "down docker-compose"
         Docker.down(monitor_pid)
@@ -22,6 +23,16 @@ defmodule Midomo.ListController do
       ["rebuild", _, service, _] ->
         IO.puts "rebuilding " <> service
         Docker.rebuild(monitor_pid, service)
+      ["logs", _, service, _] ->
+        IO.puts "opening log for " <> service
+        container_name = name |> String.split("logs_") |> Enum.at(1)
+        Docker.logs(monitor_pid, container_name)
+      ["cmd", _, service, _] ->
+        IO.puts "opening command line for " <> service
+        container_name = name |> String.split("cmd_") |> Enum.at(1)
+        Docker.cmd(monitor_pid, container_name)
+      [action, _, _, _] ->
+        IO.puts "Not implemented: " <> action
     end
   end
 
