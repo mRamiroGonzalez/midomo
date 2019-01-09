@@ -19,6 +19,7 @@ defmodule Midomo.Docker do
   def stop(pid, id), do: GenServer.cast(pid, {:stop, id})
   def restart(pid, id), do: GenServer.cast(pid, {:restart, id})
   def logs(pid, id), do: GenServer.cast(pid, {:logs, id})
+  def cmd(pid, id), do: GenServer.cast(pid, {:cmd, id})
 
 
 
@@ -76,6 +77,11 @@ defmodule Midomo.Docker do
 
   def handle_cast({:logs, id},  %{path: path} = state) do
     send_docker_command_another_tab("docker", ["logs", "-f", id], path)
+    {:noreply, state}
+  end
+
+  def handle_cast({:cmd, id},  %{path: path} = state) do
+    send_docker_command_another_tab("docker", ["exec", "-ti", id, "bash"], path)
     {:noreply, state}
   end
 
