@@ -48,7 +48,7 @@ defmodule Midomo.Docker do
     before_refresh = DateTime.utc_now
     list = get_containers_info(path)
     after_refresh = DateTime.utc_now
-    IO.inspect "Refresh container data took: #{DateTime.diff(after_refresh, before_refresh, :millisecond)}ms"
+#    IO.inspect "Refresh container data took: #{DateTime.diff(after_refresh, before_refresh, :millisecond)}ms"
     Process.send_after(self(), :refresh, @refresh_ms)
     {:noreply, %{state | list: list}}
   end

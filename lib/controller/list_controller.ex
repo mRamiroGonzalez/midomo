@@ -9,6 +9,7 @@ defmodule Midomo.ListController do
   def click_action(button_id) do
     monitor_pid = Process.whereis(ComposeMonitor)
 
+#    IO.inspect(button_id)
     name = button_id |> Atom.to_string()
     case name |> String.split("_") do
       ["down", _] ->

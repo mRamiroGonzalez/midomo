@@ -29,7 +29,6 @@ defmodule Midomo.Scene.ListView do
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
     @base_graph
-    |> clear_screen()
     |> construct_header({width, height})
     |> push_graph()
 
@@ -46,12 +45,13 @@ defmodule Midomo.Scene.ListView do
   # HANDLE EVENTS
   # ============================================================================
 
-  def handle_info(:refresh, %{vertical_slide: slide, containers_info: old_containers_info, graph: graph, options: opts} = state) do
+  def handle_info(:refresh, %{vertical_slide: slide, containers_info: old_containers_info, options: opts} = state) do
 
     {:ok, %ViewPort.Status{size: {width, height}}} = opts[:viewport] |> ViewPort.info()
 
-    graph
-    |> clear_screen()
+
+#    IO.inspect(old_containers_info)
+    graph = @base_graph
     |> construct_container_list(old_containers_info, {width, height, slide})
     |> construct_header({width, height})
     |> push_graph()
@@ -61,7 +61,7 @@ defmodule Midomo.Scene.ListView do
   end
 
   def filter_event({:click, id} = event, _, state) do
-    #IO.inspect(event)
+#    IO.inspect(event)
     ListController.click_action(id)
     {:continue, event, state}
   end
@@ -108,6 +108,7 @@ defmodule Midomo.Scene.ListView do
 #      status: "Up"
 #    }
 
+
     counter = if (rem(counter, @services_per_group + 1) == 0), do: counter + 1, else: counter
     name = item[:name]
     status = item[:status]
@@ -118,7 +119,7 @@ defmodule Midomo.Scene.ListView do
     logs_id = String.to_atom("logs_" <> name)
     cmd_id = String.to_atom("cmd_" <> name)
     vertical_spacing = slide + 60 + 30 * counter
-    text = name
+    text = format_name(name)
 
     graph = graph |> group(
       fn g ->
@@ -139,15 +140,14 @@ defmodule Midomo.Scene.ListView do
     end
   end
 
-
-    # CLEAR
-  defp clear_screen(graph) do
-    graph |> rect({1280, 720}, fill: :black)
-  end
-
+    # PRIVATE
   defp clear_list(graph) do
     graph
     |> rect({1280, 720}, fill: :black, t: {0, 60})
     |> text("Nothing to show", t: {10, 80})
+  end
+
+  defp format_name(name) do
+    name |> String.split("_") |> Enum.at(1)
   end
 end
